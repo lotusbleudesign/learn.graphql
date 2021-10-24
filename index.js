@@ -1,4 +1,5 @@
 const { ApolloServer, gql } = require("apollo-server");
+require("apollo-server");
 const { Client } = require("pg");
 
 const client = new Client({
@@ -122,7 +123,7 @@ async function updatePost(comments, updatedAt, id) {
 }
 
 // Delete a post by It's ID
-async function deletePost(id) {
+async function deletePost(_, { id }) {
   const { rows } = await client.query("DELETE FROM model WHERE id=($1)", [id]);
   return rows;
 }
@@ -131,6 +132,9 @@ async function deletePost(id) {
 getUser();
 getPost();
 
+
 server.listen().then(({ url }) => {
   console.log(`🚀  Server ready at ${url}`);
 });
+
+// https://www.apollographql.com/docs/apollo-server/schema/schema/

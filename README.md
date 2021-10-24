@@ -19,3 +19,7 @@ INSERT INTO model (createdAt) VALUES ('26 octobre 2021');<br>
 INSERT INTO model " (updatedAt) VALUES ('26 octobre 2021');<br>
 \q<br>
 <br>
+
+## Kill port if address already in use :::4000
+
+npx kill-port 4000 <br>
