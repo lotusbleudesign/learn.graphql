@@ -8,28 +8,29 @@ const client = new Client({
 client.connect();
 
 const typeDefs = gql`
-  # Schema
+
   # Schema User
   type User {
-    id: Int
+    id: ID!
     email: String
+    password : String
     firstName: String
     lastName: String
   }
   # Shema Post
   type MyPost {
-    id: Int
+    id: ID!
     author: String
     comments: String
     createdAt: String
     updatedAt: String
   }
 
-  # appel de la requete nommé Query
+  # Query
   type Query {
-    users: [User]
+    users: [User] # renvoir un tableau
     posts: [MyPost]
-    postID: MyPost
+    postID: MyPost # on post une seule insertion, donc pas de tableau
   }
 
   type Mutation {
@@ -39,38 +40,39 @@ const typeDefs = gql`
       comments: String
       createdAt: String
     ): MyPost
-
     delete(id: Int): MyPost
-
     update(comments: String, updatedAt: String, id: Int): MyPost
+    addUser(id:ID,email: String, password: String, firstName: String, lastName:String): User
   }
 `;
 
+function toto() {return "coucou"}
 const resolvers = {
   // Get
   Query: {
-    users: getUser(),
-    posts: getPost(),
-    postID: getPostId(),
+    users: getUser,
+    posts: getPost,
+    postID: getPostId,
   },
   // Modification
   Mutation: {
+    addUser: addUser,
     post: addPost,
     delete: deletePost,
-    update: updatePost,
+    update: updatePost
   },
 };
 
 const server = new ApolloServer({ typeDefs, resolvers });
 
 // Register user
-async function addUser(firstName, lastName, email) {
-  console.log(`INSERT Job done ${firstName}, ${lastName}, ${email}`);
+async function addUser(firstName, lastName, email, password) {
+  console.log(`INSERT Job done ${firstName}, ${lastName}, ${email},${password} `);
   const {
     rows,
   } = await client.query(
-    "INSERT INTO myuser (firstName,lastName,email) VALUES ($1,$2,$3) RETURNING *",
-    [firstName, lastName, email]
+    "INSERT INTO myuser (firstName,lastName,email,password) VALUES ($1,$2,$3,$4) RETURNING *",
+    [firstName, lastName, email,password]
   );
   return rows;
 }
@@ -78,12 +80,14 @@ async function addUser(firstName, lastName, email) {
 // Get user
 async function getUser() {
   const { rows } = await client.query("SELECT * FROM myuser");
+
   return rows;
 }
 
 // Read all the posts
 async function getPost() {
   const { rows } = await client.query("SELECT * FROM model");
+  console.log(rows);
   return rows;
 }
 
