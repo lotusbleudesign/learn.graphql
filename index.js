@@ -1,53 +1,20 @@
+//Connexion avec ApolloServer
 const { ApolloServer, gql } = require("apollo-server");
 require("apollo-server");
 const { Client } = require("pg");
+const { typeDefs } = require("./src/schema");
 
+//-- Connexion BDD
 const client = new Client({
   connectionString: "postgresql://localhost/pg-graphsql",
 });
-
 client.connect();
 
-const typeDefs = gql`
+function toto() {
+  return "coucou";
+}
 
-  # Schema User
-  type User {
-    id: ID!
-    email: String
-    password : String
-    firstName: String
-    lastName: String
-  }
-  # Shema Post
-  type MyPost {
-    id: ID!
-    author: String
-    comments: String
-    createdAt: String
-    updatedAt: String
-  }
-
-  # Query
-  type Query {
-    users: [User] # renvoir un tableau
-    posts: [MyPost]
-    postID: MyPost # on post une seule insertion, donc pas de tableau
-  }
-
-  type Mutation {
-    post(
-      author: String
-      content: String
-      comments: String
-      createdAt: String
-    ): MyPost
-    delete(id: Int): MyPost
-    update(comments: String, updatedAt: String, id: Int): MyPost
-    addUser(id:ID,email: String, password: String, firstName: String, lastName:String): User
-  }
-`;
-
-function toto() {return "coucou"}
+// -- Resolvers
 const resolvers = {
   // Get
   Query: {
@@ -60,81 +27,128 @@ const resolvers = {
     addUser: addUser,
     post: addPost,
     delete: deletePost,
-    update: updatePost
+    update: updatePost,
   },
 };
 
 const server = new ApolloServer({ typeDefs, resolvers });
 
 // Register user
-async function addUser(firstName, lastName, email, password) {
-  console.log(`INSERT Job done ${firstName}, ${lastName}, ${email},${password} `);
+async function addUser(firstName, lastName, password, email) {
   const {
     rows,
   } = await client.query(
-    "INSERT INTO myuser (firstName,lastName,email,password) VALUES ($1,$2,$3,$4) RETURNING *",
-    [firstName, lastName, email,password]
+    "INSERT INTO myuser (firstName,lastName,password,email) VALUES ($1,$2,$3,$4) RETURNING *",
+    [firstName, lastName, password, email]
+  );
+  console.log(
+    `INSERT Job done for : ${firstName}, ${lastName}, ${password},${email}, `
   );
   return rows;
 }
 
+// --------- Users ----------
 // Get user
 async function getUser() {
   const { rows } = await client.query("SELECT * FROM myuser");
+  console.log("Job done !");
+  return rows;
+}
 
+// --------- Post ----------
+//Create a post
+async function addPost(_, { author, comments, content, createdAt }) {
+  let ladate = new Date();
+  let createdAt =
+    ladate.getDate() +
+    "/" +
+    (ladate.getMonth() + 1) +
+    "/" +
+    ladate.getFullYear() +
+    " à " +
+    ladate.getHours() +
+    "h" +
+    ladate.getMinutes() +
+    "mn";
+
+  const { rows } = await client.query(
+    //TODO Comment faire la relation entre l'auteur d'une autre table à cette table ?
+    "INSERT INTO post (author,comments,content,createdAt) VALUES ( \
+    (SELECT id_user FROM myuser WHERE author = id_user), $2, $3, $4) RETURNING * ",
+    [author, comments, content, createdAt]
+  );
+  console.log(
+    `Job done for adding post : ${author} ${content}, ${comments}, ${createdAt}`
+  );
   return rows;
 }
 
 // Read all the posts
 async function getPost() {
-  const { rows } = await client.query("SELECT * FROM model");
+  const { rows } = await client.query("SELECT * FROM post");
   console.log(rows);
   return rows;
 }
 
-//Create a post
-async function addPost(_, { author, content, comments, createdAt }) {
-  console.log(author, content, comments, createdAt);
-  const {
-    rows,
-  } = await client.query(
-    "INSERT INTO model (author,comments,content,createdAt) VALUES ($1,$2,$3,$4) RETURNING *",
-    [author, content, comments, createdAt]
-  );
-}
-
 // Read a post by It's ID
-async function getPostId(id) {
-  console.log(id);
-  const { rows } = await client.query(
-    "SELECT * from model where (id) = ($1) ",
-    [id]
-  );
+async function getPostId(_, { id_post }) {
+  console.log(id_post);
+  const {
+    rows,
+  } = await client.query("SELECT * from post where (id_post) = ($1) ", [
+    id_post,
+  ]);
+  return rows;
 }
-
-async function updatePost(comments, updatedAt, id) {
+// Update a post by It's ID
+async function updatePost(_, { id_post, content, updatedAt }) {
+  let ladate = new Date();
+  let updatedAt =
+    ladate.getDate() +
+    "/" +
+    (ladate.getMonth() + 1) +
+    "/" +
+    ladate.getFullYear() +
+    " à " +
+    ladate.getHours() +
+    "h" +
+    ladate.getMinutes() +
+    "mn";
   const {
     rows,
   } = await client.query(
-    "UPDATE model SET comments=($1), updatedAt=($2) where (id)=($3)",
-    [comments, updatedAt, id]
+    "UPDATE post SET content=($1), updatedAt=($2) where (id_post)=($3)",
+    [id_post, content, updatedAt]
   );
+  console.log(`Job done for updatePost : ${id_post} ${content} ${updatedAt} `);
   return rows;
 }
 
 // Delete a post by It's ID
-async function deletePost(_, { id }) {
-  const { rows } = await client.query("DELETE FROM model WHERE id=($1)", [id]);
+async function deletePost(_, { id_post }) {
+  const { rows } = await client.query("DELETE FROM post WHERE id_post=($1)", [
+    id_post,
+  ]);
+  console.log("Job done, post deleted");
   return rows;
+}
+//Create a comment on a post
+// TODO comment relier des commentaires dans un même post ?
+async function createContent(_, { id_post, author, content, createdAt }) {
+  console.log(" Test ");
 }
 
 // --------- Afficher --------
 getUser();
 getPost();
 
-
 server.listen().then(({ url }) => {
   console.log(`🚀  Server ready at ${url}`);
 });
 
 // https://www.apollographql.com/docs/apollo-server/schema/schema/
+// mutation Mutation($deleteId: Int) {
+//   delete(id: $deleteId) {
+//     author
+//   }
+// }
